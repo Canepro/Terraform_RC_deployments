@@ -1,0 +1,68 @@
+# Tempo Configuration for AWS
+tempo:
+  enabled: true
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  
+  jaeger:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14250
+  
+  zipkin:
+    endpoint: 0.0.0.0:9411
+
+processors:
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+exporters:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: localhost:4317
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp, jaeger, zipkin]
+      processors: [batch]
+      exporters: [otlp]
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: "ebs-gp3"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+service:
+  type: ClusterIP
+  ports:
+    jaeger-compact:
+      port: 6831
+      protocol: UDP
+    jaeger-thrift:
+      port: 6832
+      protocol: UDP
+    jaeger-grpc:
+      port: 14250
+    zipkin:
+      port: 9411
+    otlp-grpc:
+      port: 4317
+    otlp-http:
+      port: 4318

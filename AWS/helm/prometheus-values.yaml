@@ -1,0 +1,64 @@
+# Prometheus Helm Values
+server:
+  persistentVolume:
+    enabled: true
+    storageClass: "ebs-gp3"
+    size: 20Gi
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+  service:
+    type: ClusterIP
+    port: 9090
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+alertmanager:
+  enabled: true
+  persistentVolume:
+    enabled: true
+    storageClass: "ebs-gp3"
+    size: 5Gi
+
+pushgateway:
+  enabled: true
+
+# Enable Loki for log aggregation
+loki:
+  enabled: true
+  persistence:
+    enabled: true
+    storageClass: "ebs-gp3"
+    size: 10Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# Enable Tempo for distributed tracing
+tempo:
+  enabled: true
+  persistence:
+    enabled: true
+    storageClass: "ebs-gp3"
+    size: 10Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi

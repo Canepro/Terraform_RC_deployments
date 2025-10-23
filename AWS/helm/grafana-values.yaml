@@ -1,0 +1,85 @@
+# Grafana Helm Values
+replicaCount: 1
+
+image:
+  repository: grafana/grafana
+  tag: "10.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+persistence:
+  enabled: true
+  storageClass: "ebs-gp3"
+  size: 10Gi
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+adminPassword: "admin123"
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus-server:9090
+      access: proxy
+      isDefault: true
+    - name: Loki
+      type: loki
+      url: http://loki:3100
+      access: proxy
+      uid: loki
+    - name: Tempo
+      type: tempo
+      url: http://tempo:3200
+      access: proxy
+      uid: tempo
+
+dashboards:
+  default:
+    # RocketChat Dashboards
+    rocketchat-metrics:
+      gnetId: 23428
+      revision: latest
+      datasource: Prometheus
+      folder: rocketchat
+    rocketchat-microservices:
+      gnetId: 23427
+      revision: latest
+      datasource: Prometheus
+      folder: rocketchat
+    # Community Dashboards
+    node-exporter-full:
+      gnetId: 1860
+      revision: latest
+      datasource: Prometheus
+    kubernetes-deployment:
+      gnetId: 741
+      revision: latest
+      datasource: Prometheus
+    kubernetes-pod:
+      gnetId: 740
+      revision: latest
+      datasource: Prometheus
+    kubernetes-node:
+      gnetId: 739
+      revision: latest
+      datasource: Prometheus
+    ingress-nginx:
+      gnetId: 20275
+      revision: latest
+      datasource: Prometheus
+    ingress-traefik:
+      gnetId: 17347
+      revision: latest
+      datasource: Prometheus

@@ -1,0 +1,89 @@
+# RocketChat Helm Values
+replicaCount: 2
+
+image:
+  repository: rocketchat/rocket.chat
+  tag: "6.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /api/v1/info
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+  hosts:
+    - host: rocketchat.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+persistence:
+  enabled: true
+  storageClass: "ebs-gp3"
+  size: 10Gi
+
+mongodb:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    storageClass: "mongodb-storage"
+    size: 20Gi
+  auth:
+    enabled: true
+    rootPassword: "rocketchat123"
+    username: "rocketchat"
+    password: "rocketchat123"
+    database: "rocketchat"
+
+env:
+  - name: ROOT_URL
+    value: "http://rocketchat.local"
+  - name: MONGO_URL
+    value: "mongodb://rocketchat:rocketchat123@mongodb:27017/rocketchat"
+  - name: MONGO_OPLOG_URL
+    value: "mongodb://rocketchat:rocketchat123@mongodb:27017/local"
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: rocketchat-s3-secret
+        key: access-key-id
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: rocketchat-s3-secret
+        key: secret-access-key
+  - name: AWS_S3_BUCKET
+    value: "rocketchat-files"
+  - name: AWS_S3_REGION
+    value: "us-east-1"
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

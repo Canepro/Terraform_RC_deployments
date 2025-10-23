@@ -1,0 +1,70 @@
+# RocketChat Helm Values for Azure
+replicaCount: 2
+
+image:
+  repository: rocketchat/rocket.chat
+  tag: "7.11.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false  # Using Application Gateway instead
+
+persistence:
+  enabled: true
+  storageClass: "azure-disk"
+  size: 10Gi
+
+mongodb:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    storageClass: "azure-disk"
+    size: 20Gi
+  auth:
+    enabled: true
+    rootPassword: "rootpass123"
+    usernames:
+      - "rocketchat"
+    passwords:
+      - "rocketchat123"
+    databases:
+      - "rocketchat"
+
+env:
+  - name: ROOT_URL
+    value: "http://rocketchat.local"
+  - name: MONGO_URL
+    value: "mongodb://mongodb:27017/rocketchat"
+  - name: AZURE_STORAGE_ACCOUNT
+    value: "rocketchataksfiles"  # Will be updated by Terraform
+  - name: AZURE_STORAGE_CONTAINER
+    value: "rocketchat-files"
+  - name: AZURE_STORAGE_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: azure-storage-secret
+        key: access-key
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
