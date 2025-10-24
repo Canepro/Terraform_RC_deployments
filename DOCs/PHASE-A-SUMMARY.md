@@ -147,16 +147,19 @@ terraform {
 ```bash
 export DEPLOYMENT_ID=dev123
 
-# Deploy 1
+# Deploy 1 (using plan files - best practice)
 cd AWS/terraform
-terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy.tfplan
+terraform apply deploy.tfplan
 # Record: S3 bucket name, EKS cluster name, node group name
 
 # Destroy
-terraform destroy -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -destroy -var="deployment_id=${DEPLOYMENT_ID}" -out destroy.tfplan
+terraform apply destroy.tfplan
 
 # Deploy 2 - names MUST match Deploy 1
-terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy2.tfplan
+terraform apply deploy2.tfplan
 # Verify: S3 bucket, EKS cluster, node group names identical
 ```
 
@@ -170,16 +173,19 @@ terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
 ```bash
 export DEPLOYMENT_ID=dev123
 
-# Deploy 1
+# Deploy 1 (using plan files - best practice)
 cd AZURE/terraform
-terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy.tfplan
+terraform apply deploy.tfplan
 # Record: Storage account names, AKS cluster, RG name
 
 # Destroy
-terraform destroy -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -destroy -var="deployment_id=${DEPLOYMENT_ID}" -out destroy.tfplan
+terraform apply destroy.tfplan
 
 # Deploy 2 - names MUST match Deploy 1
-terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy2.tfplan
+terraform apply deploy2.tfplan
 # Verify: Storage accounts, AKS cluster, RG names identical
 
 # Loki validation (per troubleshooting-azure.md § 9)

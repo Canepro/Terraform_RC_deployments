@@ -201,15 +201,18 @@ deployment_id = "dev123"
 # Set deployment_id
 export DEPLOYMENT_ID=dev123
 
-# Deploy 1
-terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
+# Deploy 1 (using plan file - best practice)
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy.tfplan
+terraform apply deploy.tfplan
 # Note all resource names
 
 # Destroy
-terraform destroy -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -destroy -var="deployment_id=${DEPLOYMENT_ID}" -out destroy.tfplan
+terraform apply destroy.tfplan
 
 # Deploy 2 - names MUST match Deploy 1
-terraform apply -var="deployment_id=${DEPLOYMENT_ID}"
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy2.tfplan
+terraform apply deploy2.tfplan
 ```
 
 **Checklist**:
