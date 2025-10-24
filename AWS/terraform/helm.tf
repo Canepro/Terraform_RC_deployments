@@ -56,6 +56,7 @@ resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki"
+  version    = "6.20.0"
   namespace  = "monitoring"
 
   set {
@@ -81,6 +82,7 @@ resource "helm_release" "tempo" {
   name       = "tempo"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "tempo"
+  version    = "1.23.3"
   namespace  = "monitoring"
 
   values = [
@@ -96,7 +98,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
-  version    = "1.5.4"
+  version    = "1.10.1"
 
   set {
     name  = "clusterName"
@@ -121,6 +123,7 @@ resource "helm_release" "rocketchat" {
   name       = "rocketchat"
   repository = "https://rocketchat.github.io/helm-charts"
   chart      = "rocketchat"
+  version    = "8.0.0"
   namespace  = "rocketchat"
   create_namespace = true
 

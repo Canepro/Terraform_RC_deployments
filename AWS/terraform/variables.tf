@@ -1,3 +1,12 @@
+variable "deployment_id" {
+  description = "Unique deployment identifier for deterministic resource naming"
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z0-9-]{3,16}$", var.deployment_id))
+    error_message = "deployment_id must be 3-16 characters, lowercase alphanumeric and hyphens only"
+  }
+}
+
 variable "aws_region" {
   description = "AWS region for deployment"
   type        = string

@@ -1,13 +1,8 @@
 # S3 Bucket for RocketChat file uploads
 resource "aws_s3_bucket" "rocketchat_files" {
-  bucket = "${local.name}-rocketchat-files-${random_id.bucket_suffix.hex}"
+  bucket = local.s3_bucket_name
 
   tags = local.common_tags
-}
-
-# Random ID for S3 bucket suffix to ensure uniqueness
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
 }
 
 # S3 Bucket Versioning

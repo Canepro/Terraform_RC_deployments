@@ -65,6 +65,7 @@ resource "helm_release" "rocketchat" {
   name       = "rocketchat"
   repository = "https://rocketchat.github.io/helm-charts"
   chart      = "rocketchat"
+  # version    = "8.0.0"  # Not available yet, use latest
   namespace  = kubernetes_namespace.rocketchat.metadata[0].name
 
   values = [
@@ -118,6 +119,7 @@ resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki"
+  version    = "6.20.0"
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
   values = [
@@ -132,6 +134,7 @@ resource "helm_release" "tempo" {
   name       = "tempo"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "tempo"
+  version    = "1.23.3"
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
   values = [

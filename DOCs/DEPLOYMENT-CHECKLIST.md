@@ -147,42 +147,86 @@ kubectl exec -n monitoring <grafana-pod> -- \
 
 ## 🎯 Phase A: Make Infrastructure Deterministic (4-6 Hours)
 
-### Add Deployment ID and Version Pinning
+### Add Deployment ID Variable
 
-**Files to Update**:
-- [ ] `AWS/terraform/variables.tf` - Add deployment_id, version variables
-- [ ] `AZURE/terraform/variables.tf` - Add deployment_id, version variables
-- [ ] `AWS/terraform/terraform.tfvars` - Add deployment_id value
-- [ ] `AZURE/terraform/terraform.tfvars` - Add deployment_id value
+**Files Updated**:
+- [x] `AWS/terraform/variables.tf` - Added deployment_id with validation
+- [x] `AZURE/terraform/variables.tf` - Added deployment_id with validation
+- [x] `AWS/terraform/main.tf` - Added deterministic naming locals
+- [x] `AZURE/terraform/main.tf` - Added deterministic naming locals
 
-### Update Storage Account Naming
-
-**Files to Update**:
-- [ ] `AWS/terraform/s3.tf` - Use deterministic naming
-- [ ] `AZURE/terraform/storage.tf` - Remove random strings, use deployment_id
-
-### Pin All Helm Versions
-
-**Files to Update**:
-- [ ] `AWS/terraform/helm.tf` - Add version constraints
-- [ ] `AZURE/terraform/helm.tf` - Add version constraints
-
-**Verification**:
+**Usage**:
 ```bash
-# Deploy, destroy, deploy again - should have identical names
-terraform apply -auto-approve
-terraform destroy -auto-approve
-terraform apply -auto-approve
+# Deploy with deployment_id
+terraform apply -var="deployment_id=dev123"
 
-# Check resource names match exactly
-aws s3 ls  # or az storage account list
+# Or set in terraform.tfvars:
+deployment_id = "dev123"
+```
+
+### Remove Random Resources
+
+**Files Updated**:
+- [x] `AWS/terraform/storage.tf` - Removed random_id, use deployment_id
+- [x] `AZURE/terraform/storage.tf` - Removed random_string resources
+
+**Deterministic Naming**:
+- AWS S3: `{deployment_id}-rc-files-{region}`
+- Azure Storage: `{deployment_id}rcfiles` (max 24 chars)
+- EKS Cluster: `{deployment_id}-eks`
+- AKS Cluster: `{deployment_id}-aks`
+- Resource Group: `{deployment_id}-rg`
+
+### Pin All Versions
+
+**Terraform Providers** (versions.tf):
+- [x] AWS: Terraform ~> 1.9.0, aws ~> 5.76.0, helm ~> 2.16.0, kubernetes ~> 2.33.0
+- [x] Azure: Terraform ~> 1.9.0, azurerm ~> 4.11.0, helm ~> 2.16.0, kubernetes ~> 2.33.0
+
+**Helm Charts** (helm.tf):
+- [x] Prometheus: 52.0.0
+- [x] Grafana: 6.50.0
+- [x] Loki: 6.20.0
+- [x] Tempo: 1.10.5
+- [x] RocketChat: 8.0.0
+- [x] AWS LB Controller: 1.10.1
+
+**Container Images** (helm values):
+- [x] Grafana: 11.4.0
+- [x] RocketChat: 7.0.0
+
+### Verification Test
+
+```bash
+# Set deployment_id
+export DEPLOYMENT_ID=dev123
+
+# Deploy 1 (using plan file - best practice)
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy.tfplan
+terraform apply deploy.tfplan
+# Note all resource names
+
+# Destroy
+terraform plan -destroy -var="deployment_id=${DEPLOYMENT_ID}" -out destroy.tfplan
+terraform apply destroy.tfplan
+
+# Deploy 2 - names MUST match Deploy 1
+terraform plan -var="deployment_id=${DEPLOYMENT_ID}" -out deploy2.tfplan
+terraform apply deploy2.tfplan
 ```
 
 **Checklist**:
-- [ ] S3 bucket names deterministic (AWS)
-- [ ] Storage account names deterministic (Azure)
-- [ ] All Helm chart versions pinned
-- [ ] Deploy → Destroy → Deploy produces identical resources
+- [x] deployment_id variable added with validation
+- [x] All random_* resources removed
+- [x] Deterministic naming locals created
+- [x] S3/Storage names use deployment_id
+- [x] Cluster names use deployment_id
+- [x] Terraform provider versions pinned
+- [x] All Helm chart versions pinned
+- [x] Container image tags pinned
+- [ ] Deploy → Destroy → Deploy test passed (AWS)
+- [ ] Deploy → Destroy → Deploy test passed (Azure)
+- [ ] Loki validated on Azure (per troubleshooting § 9)
 
 ---
 

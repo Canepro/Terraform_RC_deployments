@@ -13,6 +13,9 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+# Azure credentials
+.azure-credentials.sh
+
 # Plans
 *.tfplan
 *.plan

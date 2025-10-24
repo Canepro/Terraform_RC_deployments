@@ -1,6 +1,6 @@
 # Virtual Network
 resource "azurerm_virtual_network" "main" {
-  name                = "${local.name}-vnet"
+  name                = "${local.aks_cluster_name}-vnet"
   address_space       = [var.vnet_cidr]
   location            = local.resource_group.location
   resource_group_name = local.resource_group.name
@@ -10,7 +10,7 @@ resource "azurerm_virtual_network" "main" {
 
 # Subnet for AKS nodes
 resource "azurerm_subnet" "aks_nodes" {
-  name                 = "${local.name}-aks-nodes"
+  name                 = "${local.aks_cluster_name}-aks-nodes"
   resource_group_name  = local.resource_group.name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.0.1.0/24"]
@@ -18,7 +18,7 @@ resource "azurerm_subnet" "aks_nodes" {
 
 # Subnet for Application Gateway
 resource "azurerm_subnet" "app_gateway" {
-  name                 = "${local.name}-app-gateway"
+  name                 = "${local.aks_cluster_name}-app-gateway"
   resource_group_name  = local.resource_group.name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.0.2.0/24"]
@@ -26,7 +26,7 @@ resource "azurerm_subnet" "app_gateway" {
 
 # Network Security Group for AKS nodes
 resource "azurerm_network_security_group" "aks_nodes" {
-  name                = "${local.name}-aks-nodes-nsg"
+  name                = "${local.aks_cluster_name}-aks-nodes-nsg"
   location            = local.resource_group.location
   resource_group_name = local.resource_group.name
 

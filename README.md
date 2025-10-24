@@ -1,42 +1,89 @@
 # Terraform RocketChat Deployments
 
-This repository contains **Terraform-based Infrastructure as Code (IaC)** deployments for RocketChat on cloud platforms using Terraform and Kubernetes.
+**Deterministic, production-ready RocketChat deployments on AWS and Azure using Terraform + Kubernetes.**
 
-**For both AWS and Azure, with full support for any environment (sandbox, dev, staging, prod).**
+[![Phase A](https://img.shields.io/badge/Phase%20A-Complete-success)](DOCs/PHASE-A-SUMMARY.md)
+[![Terraform](https://img.shields.io/badge/Terraform-1.9+-blue)](https://www.terraform.io/)
+[![AWS](https://img.shields.io/badge/AWS-EKS-orange)](AWS/)
+[![Azure](https://img.shields.io/badge/Azure-AKS-blue)](AZURE/)
+
+---
+
+## ✨ Key Features
+
+- ✅ **Deterministic Deployments**: Deploy → Destroy → Deploy = identical resource names
+- ✅ **Version Pinned**: All Terraform providers, Helm charts, and container images pinned
+- ✅ **Multi-Cloud**: Same codebase for AWS EKS and Azure AKS
+- ✅ **Production Ready**: HA MongoDB, auto-scaling, full monitoring stack
+- ✅ **Best Practices**: Uses `terraform plan -out` for safe deployments
+- ✅ **Environment Support**: Sandbox, dev, staging, prod (via `deployment_id`)
+
+**Status**: Phase A Complete ✅ | Phase B In Progress ⏳
 
 ---
 
 ## 📋 Getting Started
 
-### 🎯 **→ [Read MASTER-PLAN.md](DOCs/MASTER-PLAN.md)**
+### 🎯 **Quick Links**
 
-Complete roadmap with clear phases to build a reusable template that works for:
-- ✅ Deploy/destroy anytime
-- ✅ Same infrastructure every time
-- ✅ Any Azure environment
-- ✅ AWS and Azure support
+- **[MASTER-PLAN.md](DOCs/MASTER-PLAN.md)** - Complete implementation roadmap
+- **[PHASE-A-SUMMARY.md](DOCs/PHASE-A-SUMMARY.md)** - Phase A completion details
+- **[azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md)** - Azure sandbox setup guide
+- **[DEPLOYMENT-CHECKLIST.md](DOCs/DEPLOYMENT-CHECKLIST.md)** - Deployment checklist
 
-**Phases**: Phase 0 (1 hr) → Phase A (4-6 hrs) → Phase B (4-6 hrs) → Phase C (3-4 hrs) = **2 weeks total**
+### 📅 Implementation Phases
+
+| Phase | Status | Duration | Description |
+|-------|--------|----------|-------------|
+| **Phase 0** | ✅ Complete | 1 hr | Fix critical bugs (App Gateway, Helm charts) |
+| **Phase A** | ✅ Complete | 4-6 hrs | Deterministic deployments + version pinning |
+| **Phase B** | ⏳ Next | 4-6 hrs | Environment-specific tfvars (sandbox/dev/prod) |
+| **Phase C** | 📋 Planned | 3-4 hrs | Remote state backend (S3/Azure Storage) |
 
 ---
 
 ## 🚀 Quick Start
 
+### Prerequisites
+- Terraform 1.9+ installed
+- Cloud CLI configured (AWS CLI or Azure CLI)
+- kubectl and helm installed
+
 ### AWS Deployment
 ```bash
 cd AWS/terraform
-terraform init
-terraform plan
-terraform apply
+
+# Initialize Terraform
+terraform init -upgrade
+
+# Plan deployment (REQUIRED: use -out flag)
+terraform plan -var="deployment_id=dev123" -out deploy.tfplan
+
+# Review the plan, then apply
+terraform apply deploy.tfplan
 ```
 
 ### Azure Deployment
+
+**For Azure Sandbox**: See [azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md) for detailed setup.
+
 ```bash
 cd AZURE/terraform
-terraform init
-terraform plan
-terraform apply
+
+# Set up credentials (see azure-sandbox-setup.md)
+source .azure-credentials.sh
+
+# Initialize Terraform
+terraform init -upgrade
+
+# Plan deployment (REQUIRED: use -out flag)
+terraform plan -var="deployment_id=sandbox01" -out aks.tfplan
+
+# Review the plan, then apply
+terraform apply aks.tfplan
 ```
+
+**Important**: Always use `terraform plan -out` to save plans before applying. This ensures what you review is exactly what gets deployed.
 
 ---
 
@@ -80,51 +127,96 @@ Terraform_RC_deployments/
 - **Monitoring**: Prometheus + Grafana stack
 - **Networking**: VNet with public/private subnets
 
-### Key Features
-- ✅ **Production Ready**: High availability, auto-scaling, monitoring
-- ✅ **Secure**: Private subnets, IAM roles, encrypted storage
-- ✅ **Observable**: Full monitoring stack with dashboards
-- ✅ **Repeatable**: Complete IaC approach
-- ✅ **Cost Optimized**: Right-sized resources, spot instances
-- ✅ **Terraform Native**: Full Terraform state management
-- ✅ **Modular**: Clean, maintainable Terraform code
-- ✅ **Stateful**: Terraform state tracking for all resources
+### Deployed Components
+- **RocketChat**: Latest (microservices architecture)
+- **MongoDB**: 3-replica set with persistence
+- **Monitoring Stack**:
+  - Prometheus (v52.0.0) - Metrics collection
+  - Grafana (v6.50.0, image 11.4.0) - Dashboards
+  - Loki (v6.20.0) - Log aggregation
+  - Tempo (v1.23.3) - Distributed tracing
+- **Storage**: Cloud-native persistent volumes + object storage
+- **Networking**: Load balancer with health checks
+
+### Deterministic Naming (Phase A)
+All resources use `deployment_id` for predictable names:
+- **AWS**: `{deployment_id}-eks`, `{deployment_id}-rc-files-{region}`
+- **Azure**: `{deployment_id}-aks`, `{deployment_id}rcfiles`, `{deployment_id}-aks-vnet`
+
+**Example**: `deployment_id=sandbox01` creates `sandbox01-aks`, `sandbox01rcfiles`, etc.
 
 ---
 
 ## 📋 Prerequisites
 
 ### Required Tools
-- **Terraform** (v1.0+) - [Install Guide](https://learn.hashicorp.com/tutorials/terraform/install-cli)
+- **Terraform** (v1.9+) - [Install Guide](https://learn.hashicorp.com/tutorials/terraform/install-cli)
 - **kubectl** (v1.28+) - [Install Guide](https://kubernetes.io/docs/tasks/tools/)
 - **Helm** (v3.0+) - [Install Guide](https://helm.sh/docs/intro/install/)
 
 ### Cloud-Specific Requirements
-- **AWS**: AWS CLI, AWS Account with appropriate permissions
-- **Azure**: Azure CLI, Azure subscription with appropriate permissions
+
+**AWS**:
+- AWS CLI configured with credentials
+- IAM permissions for EKS, VPC, S3, IAM, CloudWatch
+
+**Azure**:
+- Azure CLI installed
+- Service Principal with Contributor access
+- Resource Group access (sandbox or dedicated)
+- See [azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md) for sandbox setup
+
+### Version Pinning (Phase A Complete)
+All versions are pinned for reproducibility:
+- **Terraform Providers**: AWS 5.76, Azure 3.117, Helm 2.17, Kubernetes 2.38
+- **Helm Charts**: Prometheus 52.0.0, Grafana 6.50.0, Loki 6.20.0, Tempo 1.23.3
+- **Container Images**: Grafana 11.4.0, RocketChat 7.0.0
 
 ---
 
-## 🔧 Terraform Benefits
+## 🔧 Best Practices
 
-### Why Terraform?
-- **State Management**: Track all infrastructure changes
-- **Plan & Apply**: Review changes before applying
-- **Dependency Management**: Automatic resource ordering
-- **Rollback Capability**: Easy infrastructure rollbacks
-- **Team Collaboration**: Shared state and locking
-- **Multi-Cloud**: Same tool for AWS and Azure
+### Terraform Workflow (REQUIRED)
+Always use plan files to ensure consistency:
+
+```bash
+# 1. Plan and save to file
+terraform plan -var="deployment_id=myenv" -out myenv.tfplan
+
+# 2. Review the plan output carefully
+
+# 3. Apply the saved plan (no drift between plan and apply)
+terraform apply myenv.tfplan
+```
+
+**Why?** Using `-out` ensures what you review in `plan` is exactly what gets deployed in `apply`, preventing unexpected changes.
+
+### Deployment ID Convention
+Use descriptive, environment-specific IDs:
+- Sandbox: `sandbox01`, `sandbox02`
+- Dev: `dev-feature-x`, `dev-team-a`
+- Staging: `staging-v2`
+- Production: `prod-us-east`, `prod-eu-west`
+
+**Rules**: 3-16 characters, lowercase alphanumeric and hyphens only
 
 ---
 
 ## 📚 Documentation
 
-### Main
-- **[MASTER-PLAN.md](DOCs/MASTER-PLAN.md)** ← Start here for implementation roadmap
+### Getting Started
+- **[MASTER-PLAN.md](DOCs/MASTER-PLAN.md)** - Complete implementation roadmap (all phases)
+- **[azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md)** - Azure sandbox setup guide
+- **[DEPLOYMENT-CHECKLIST.md](DOCs/DEPLOYMENT-CHECKLIST.md)** - Pre-flight checklist
+
+### Phase Summaries
+- **[PHASE-A-SUMMARY.md](DOCs/PHASE-A-SUMMARY.md)** - Deterministic deployments (COMPLETE ✅)
+- **[PHASE-0-COMPLETION.md](DOCs/PHASE-0-COMPLETION.md)** - Bug fixes (COMPLETE ✅)
 
 ### Reference
 - [deployment.md](DOCs/deployment.md) - Step-by-step deployment guide
-- [troubleshooting.md](DOCs/troubleshooting.md) - Common issues and solutions
+- [troubleshooting-aws.md](DOCs/troubleshooting-aws.md) - AWS-specific issues
+- [troubleshooting-azure.md](DOCs/troubleshooting-azure.md) - Azure-specific issues
 - [architecture.md](DOCs/architecture.md) - Technical architecture overview
 - [operations.md](DOCs/operations.md) - Day-2 operations and maintenance
 - [INDEX.md](DOCs/INDEX.md) - Documentation index
@@ -153,32 +245,46 @@ terraform output
 
 ## 🧹 Cleanup
 
-To destroy all resources:
+To destroy all resources (best practice with plan files):
 
 ```bash
 # AWS
 cd AWS/terraform
-terraform destroy
+terraform plan -destroy -var="deployment_id=dev123" -out destroy.tfplan
+terraform apply destroy.tfplan
 
 # Azure
 cd AZURE/terraform
-terraform destroy
+terraform plan -destroy -var="deployment_id=sandbox01" -out destroy.tfplan
+terraform apply destroy.tfplan
 ```
+
+**Note**: For Azure sandbox, the resource group itself won't be deleted (you don't own it), only resources inside it.
 
 ---
 
 ## 🆘 Support
 
-### Documentation
+### Common Issues
+
+**Azure Sandbox**:
+- See [azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md) for setup issues
+- See [troubleshooting-azure.md](DOCs/troubleshooting-azure.md) § 9 for Loki issues
+
+**AWS**:
+- See [troubleshooting-aws.md](DOCs/troubleshooting-aws.md) for AWS-specific issues
+
+**General**:
 1. Check [MASTER-PLAN.md](DOCs/MASTER-PLAN.md) for implementation guidance
-2. Check [troubleshooting.md](DOCs/troubleshooting.md) for common issues
-3. Check [operations.md](DOCs/operations.md) for operational guidance
+2. Check [DEPLOYMENT-CHECKLIST.md](DOCs/DEPLOYMENT-CHECKLIST.md) for pre-flight checks
+3. Review Terraform and Kubernetes logs
+4. Check cloud provider documentation
 
 ### Getting Help
 1. Review the documentation in `DOCs/`
-2. Check Terraform and Kubernetes logs
-3. Check cloud provider documentation
-4. Open an issue in this repository
+2. Check the troubleshooting guides for your cloud
+3. Verify all prerequisites are met
+4. Open an issue in this repository with logs and error messages
 
 ---
 

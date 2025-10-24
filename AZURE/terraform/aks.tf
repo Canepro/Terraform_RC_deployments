@@ -1,9 +1,9 @@
 # AKS Cluster
 resource "azurerm_kubernetes_cluster" "main" {
-  name                = local.name
+  name                = local.aks_cluster_name
   location            = local.resource_group.location
   resource_group_name = local.resource_group.name
-  dns_prefix          = local.name
+  dns_prefix          = local.aks_cluster_name
   kubernetes_version  = var.aks_cluster_version
 
   default_node_pool {
@@ -39,7 +39,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
 # Log Analytics Workspace for monitoring
 resource "azurerm_log_analytics_workspace" "main" {
-  name                = "${local.name}-logs"
+  name                = "${local.aks_cluster_name}-logs"
   location            = local.resource_group.location
   resource_group_name = local.resource_group.name
   sku                 = "PerGB2018"

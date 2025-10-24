@@ -1,16 +1,42 @@
+# Loki single-binary mode with filesystem storage (Phase 0 fix)
+deploymentMode: SingleBinary
+
 loki:
   auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: 'filesystem'
+  schemaConfig:
+    configs:
+      - from: 2024-01-01
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
 
 singleBinary:
-  enabled: true
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: azure-disk
 
-# Minimal config using filesystem storage
-lokiStorageType: filesystem
+# Disable components not needed in single-binary mode
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
 
-persistence:
-  enabled: true
-  size: 10Gi
-  storageClassName: azure-disk
+# Disable caching (too resource-intensive for sandbox)
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
 
 # Disable enterprise features
 enterprise:
