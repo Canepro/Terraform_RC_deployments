@@ -1,3 +1,12 @@
+variable "deployment_id" {
+  description = "Unique deployment identifier for deterministic resource naming"
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z0-9-]{3,16}$", var.deployment_id))
+    error_message = "deployment_id must be 3-16 characters, lowercase alphanumeric and hyphens only"
+  }
+}
+
 variable "azure_region" {
   description = "Azure region for deployment"
   type        = string
@@ -17,9 +26,9 @@ variable "environment" {
 }
 
 variable "resource_group_name" {
-  description = "Name of the resource group"
+  description = "Name of the resource group (leave empty to auto-discover sandbox RG)"
   type        = string
-  default     = "rocketchat-aks-rg"
+  default     = ""
 }
 
 variable "create_resource_group" {

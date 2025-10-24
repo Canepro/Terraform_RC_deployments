@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: grafana/grafana
-  tag: "10.0.0"
+  tag: "11.4.0"
   pullPolicy: IfNotPresent
 
 service:

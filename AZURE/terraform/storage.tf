@@ -1,20 +1,6 @@
-# Random string for unique storage account names - FILES
-resource "random_string" "files_suffix" {
-  length  = 12
-  special = false
-  upper   = false
-}
-
-# Random string for unique storage account names - MONGODB
-resource "random_string" "mongo_suffix" {
-  length  = 12
-  special = false
-  upper   = false
-}
-
 # Storage Account for RocketChat files
 resource "azurerm_storage_account" "rocketchat_files" {
-  name                     = "rcfiles${random_string.files_suffix.result}"
+  name                     = local.storage_files_name
   resource_group_name      = local.resource_group.name
   location                = local.resource_group.location
   account_tier             = "Standard"
@@ -41,7 +27,7 @@ resource "azurerm_storage_container" "rocketchat_files" {
 
 # Storage Account for MongoDB backups
 resource "azurerm_storage_account" "mongodb_backups" {
-  name                     = "rcmongo${random_string.mongo_suffix.result}"
+  name                     = local.storage_mongo_name
   resource_group_name      = local.resource_group.name
   location                = local.resource_group.location
   account_tier             = "Standard"

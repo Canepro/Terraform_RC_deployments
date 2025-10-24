@@ -1,6 +1,6 @@
 # EKS Cluster
 resource "aws_eks_cluster" "main" {
-  name     = local.name
+  name     = local.eks_cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
   version  = var.eks_cluster_version
 
@@ -23,7 +23,7 @@ resource "aws_eks_cluster" "main" {
 
 # CloudWatch Log Group for EKS Cluster
 resource "aws_cloudwatch_log_group" "eks_cluster" {
-  name              = "/aws/eks/${local.name}/cluster"
+  name              = "/aws/eks/${local.eks_cluster_name}/cluster"
   retention_in_days = 7
 
   tags = local.common_tags
@@ -32,7 +32,7 @@ resource "aws_cloudwatch_log_group" "eks_cluster" {
 # EKS Node Group
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "${local.name}-nodes"
+  node_group_name = "${local.eks_cluster_name}-nodes"
   node_role_arn   = aws_iam_role.eks_node_group.arn
   subnet_ids      = aws_subnet.private[*].id
   instance_types  = var.node_instance_types

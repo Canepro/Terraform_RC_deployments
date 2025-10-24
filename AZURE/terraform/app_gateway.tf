@@ -1,6 +1,6 @@
 # Public IP for Application Gateway
 resource "azurerm_public_ip" "app_gateway" {
-  name                = "${local.name}-app-gateway-pip"
+  name                = "${local.aks_cluster_name}-app-gateway-pip"
   resource_group_name = local.resource_group.name
   location           = local.resource_group.location
   allocation_method   = "Static"
@@ -11,7 +11,7 @@ resource "azurerm_public_ip" "app_gateway" {
 
 # Application Gateway
 resource "azurerm_application_gateway" "main" {
-  name                = "${local.name}-app-gateway"
+  name                = "${local.aks_cluster_name}-app-gateway"
   resource_group_name = local.resource_group.name
   location           = local.resource_group.location
 
