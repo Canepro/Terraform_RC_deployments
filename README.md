@@ -2,7 +2,8 @@
 
 **Deterministic, production-ready RocketChat deployments on AWS and Azure using Terraform + Kubernetes.**
 
-[![Phase A](https://img.shields.io/badge/Phase%20A-Complete-success)](DOCs/PHASE-A-SUMMARY.md)
+[![Phase B](https://img.shields.io/badge/Phase%20B-Complete-success)](DOCs/PHASE-B-COMPLETION.md)
+[![Deployment Ready](https://img.shields.io/badge/Deployment-Ready-brightgreen)](DOCs/PHASE-B-READINESS.md)
 [![Terraform](https://img.shields.io/badge/Terraform-1.9+-blue)](https://www.terraform.io/)
 [![AWS](https://img.shields.io/badge/AWS-EKS-orange)](AWS/)
 [![Azure](https://img.shields.io/badge/Azure-AKS-blue)](AZURE/)
@@ -16,9 +17,10 @@
 - ✅ **Multi-Cloud**: Same codebase for AWS EKS and Azure AKS
 - ✅ **Production Ready**: HA MongoDB, auto-scaling, full monitoring stack
 - ✅ **Best Practices**: Uses `terraform plan -out` for safe deployments
-- ✅ **Environment Support**: Sandbox, dev, staging, prod (via `deployment_id`)
+- ✅ **Environment Support**: Sandbox, dev, prod with environment-specific tfvars
+- ✅ **Deployment Ready**: All Phase 0/A issues resolved (see [PHASE-B-READINESS.md](DOCs/PHASE-B-READINESS.md))
 
-**Status**: Phase A Complete ✅ | Phase B In Progress ⏳
+**Status**: Phase B Complete ✅ | Phase C Next 🔜 | Deployment Ready 🟢
 
 ---
 
@@ -26,7 +28,9 @@
 
 ### 🎯 **Quick Links**
 
+- 🟢 **[PHASE-B-READINESS.md](DOCs/PHASE-B-READINESS.md)** - ALL CLEAR for deployment ← **START HERE**
 - **[MASTER-PLAN.md](DOCs/MASTER-PLAN.md)** - Complete implementation roadmap
+- **[PHASE-B-COMPLETION.md](DOCs/PHASE-B-COMPLETION.md)** - Phase B completion details
 - **[PHASE-A-SUMMARY.md](DOCs/PHASE-A-SUMMARY.md)** - Phase A completion details
 - **[azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md)** - Azure sandbox setup guide
 - **[DEPLOYMENT-CHECKLIST.md](DOCs/DEPLOYMENT-CHECKLIST.md)** - Deployment checklist
@@ -37,8 +41,8 @@
 |-------|--------|----------|-------------|
 | **Phase 0** | ✅ Complete | 1 hr | Fix critical bugs (App Gateway, Helm charts) |
 | **Phase A** | ✅ Complete | 4-6 hrs | Deterministic deployments + version pinning |
-| **Phase B** | ⏳ Next | 4-6 hrs | Environment-specific tfvars (sandbox/dev/prod) |
-| **Phase C** | 📋 Planned | 3-4 hrs | Remote state backend (S3/Azure Storage) |
+| **Phase B** | ✅ Complete | 4-6 hrs | Environment-specific tfvars (sandbox/dev/prod) |
+| **Phase C** | 🔜 Next | 3-4 hrs | Remote state backend (S3/Azure Storage) |
 
 ---
 
@@ -65,16 +69,31 @@ terraform apply deploy.tfplan
 
 ### Azure Deployment
 
-**For Azure Sandbox**: See [azure-sandbox-setup.md](DOCs/azure-sandbox-setup.md) for detailed setup.
+**🟢 DEPLOYMENT READY**: All Phase 0/A issues resolved. See [PHASE-B-READINESS.md](DOCs/PHASE-B-READINESS.md) for full assessment.
 
+**Phase B: Use environment-specific tfvars**:
 ```bash
 cd AZURE/terraform
 
-# Set up credentials (see azure-sandbox-setup.md)
-source .azure-credentials.sh
-
 # Initialize Terraform
 terraform init -upgrade
+
+# Sandbox (cost-optimized, 2 nodes)
+terraform plan -var-file=terraform.sandbox.tfvars -out=sandbox.tfplan
+terraform apply sandbox.tfplan
+
+# Development
+terraform plan -var-file=terraform.dev.tfvars -out=dev.tfplan
+terraform apply dev.tfplan
+
+# Production (full resources)
+terraform plan -var-file=terraform.prod.tfvars -out=prod.tfplan
+terraform apply prod.tfplan
+```
+
+**Legacy: Manual deployment_id** (not recommended):
+```bash
+cd AZURE/terraform
 
 # Plan deployment (REQUIRED: use -out flag)
 terraform plan -var="deployment_id=sandbox01" -out aks.tfplan

@@ -762,6 +762,334 @@ terraform destroy -var-file=terraform.sandbox.tfvars
 
 ---
 
+## 🌐 Phase D: Production Deployment with Domain & SSL (6-8 Hours)
+
+**Goal**: Deploy production-ready RocketChat with custom domain, SSL, monitoring alerts, and automated backups
+
+**Prerequisites**: Phases A, B, C complete
+
+### D1: Domain & DNS Configuration
+
+**Option A: Azure DNS Zone** (Recommended)
+
+**File**: `AZURE/terraform/dns.tf` (new)
+
+```hcl
+resource "azurerm_dns_zone" "main" {
+  name                = var.domain_name  # "yourdomain.com"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+}
+
+resource "azurerm_dns_a_record" "rocketchat" {
+  name                = var.subdomain  # "chat"
+  zone_name           = azurerm_dns_zone.main.name
+  resource_group_name = azurerm_resource_group.main.name
+  ttl                 = 300
+  records             = [azurerm_public_ip.app_gateway.ip_address]
+}
+
+output "dns_nameservers" {
+  value = azurerm_dns_zone.main.name_servers
+  description = "Update these at your domain registrar"
+}
+```
+
+**Manual Step**: Update nameservers at your domain registrar with Azure DNS values.
+
+### D2: SSL Certificate with Let's Encrypt
+
+**File**: `AZURE/terraform/ssl.tf` (new)
+
+```hcl
+# cert-manager for Let's Encrypt
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  version    = "v1.13.2"
+  namespace  = "cert-manager"
+  create_namespace = true
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+}
+
+# Let's Encrypt ClusterIssuer
+resource "kubernetes_manifest" "letsencrypt_prod" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata   = { name = "letsencrypt-prod" }
+    spec = {
+      acme = {
+        server = "https://acme-v02.api.letsencrypt.org/directory"
+        email  = var.letsencrypt_email
+        privateKeySecretRef = { name = "letsencrypt-prod" }
+        solvers = [{
+          http01 = { ingress = { class = "nginx" } }
+        }]
+      }
+    }
+  }
+  depends_on = [helm_release.cert_manager]
+}
+```
+
+### D3: Azure Key Vault for Secrets
+
+**File**: `AZURE/terraform/keyvault.tf` (new)
+
+```hcl
+resource "azurerm_key_vault" "main" {
+  name                = "${var.deployment_id}-kv"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
+  
+  purge_protection_enabled = true
+  
+  tags = local.common_tags
+}
+
+resource "azurerm_key_vault_secret" "mongodb_password" {
+  name         = "mongodb-admin-password"
+  value        = random_password.mongodb.result
+  key_vault_id = azurerm_key_vault.main.id
+}
+```
+
+### D4: Production Monitoring Alerts
+
+**File**: `AZURE/terraform/monitoring-alerts.tf` (new)
+
+```hcl
+resource "azurerm_monitor_action_group" "main" {
+  name                = "${var.deployment_id}-alerts"
+  resource_group_name = azurerm_resource_group.main.name
+  short_name          = var.deployment_id
+
+  email_receiver {
+    name          = "DevOps Team"
+    email_address = var.alert_email
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "high_cpu" {
+  name                = "${var.deployment_id}-high-cpu"
+  resource_group_name = azurerm_resource_group.main.name
+  scopes              = [azurerm_kubernetes_cluster.main.id]
+  description         = "Alert when CPU > 80%"
+  severity            = 2
+
+  criteria {
+    metric_namespace = "Microsoft.ContainerService/managedClusters"
+    metric_name      = "node_cpu_usage_percentage"
+    aggregation      = "Average"
+    operator         = "GreaterThan"
+    threshold        = 80
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.main.id
+  }
+}
+
+# Additional alerts: memory, pod restarts, app gateway health
+```
+
+### D5: Automated MongoDB Backups
+
+**File**: `AZURE/terraform/backup.tf` (new)
+
+```hcl
+resource "kubernetes_cron_job_v1" "mongodb_backup" {
+  metadata {
+    name      = "mongodb-backup"
+    namespace = "rocketchat"
+  }
+
+  spec {
+    schedule = "0 2 * * *"  # 2 AM daily
+
+    job_template {
+      metadata {}
+      spec {
+        template {
+          metadata {}
+          spec {
+            container {
+              name  = "mongodb-backup"
+              image = "mongo:6.0"
+              command = ["/bin/sh", "-c"]
+              args = [
+                "mongodump --host=rocketchat-mongodb:27017 --out=/backup/$(date +%Y%m%d) && az storage blob upload-batch --account-name ${var.storage_account} --destination mongodb-backups --source /backup/"
+              ]
+            }
+            restart_policy = "OnFailure"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### D6: Production RocketChat Values
+
+**File**: `AZURE/helm/rocketchat-values-prod.yaml` (new)
+
+```yaml
+replicaCount: 3  # High availability
+
+image:
+  tag: "7.11.0"  # Current stable version
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: chat.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: rocketchat-tls
+      hosts:
+        - chat.yourdomain.com
+
+mongodb:
+  replicaCount: 3
+  persistence:
+    storageClass: "managed-premium"
+    size: 100Gi
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+
+env:
+  - name: ROOT_URL
+    value: "https://chat.yourdomain.com"
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 2Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+```
+
+### D7: Update Production Variables
+
+**File**: `AZURE/terraform/variables.tf` (add new variables)
+
+```hcl
+variable "domain_name" {
+  description = "Domain name for RocketChat"
+  type        = string
+  default     = ""
+}
+
+variable "subdomain" {
+  description = "Subdomain for RocketChat (e.g., 'chat')"
+  type        = string
+  default     = "chat"
+}
+
+variable "letsencrypt_email" {
+  description = "Email for Let's Encrypt certificate notifications"
+  type        = string
+  default     = ""
+}
+
+variable "alert_email" {
+  description = "Email for Azure Monitor alerts"
+  type        = string
+  default     = ""
+}
+```
+
+### D8: Update Production tfvars
+
+**File**: `AZURE/terraform/terraform.prod.tfvars` (add to existing)
+
+```hcl
+# Domain & SSL (NEW)
+domain_name       = "yourdomain.com"
+subdomain         = "chat"
+letsencrypt_email = "devops@yourdomain.com"
+
+# Monitoring (NEW)
+alert_email = "alerts@yourdomain.com"
+
+# Updated Production Sizing
+node_vm_size  = "Standard_D4s_v3"  # 4 vCPU, 16GB RAM
+node_count    = 5
+min_count     = 3
+max_count     = 10
+
+# Storage (Premium for production)
+storage_account_tier = "Premium"
+storage_replication  = "ZRS"
+```
+
+### D9: Version Management
+
+**Always use current versions** - see `DOCs/VERSION-MANAGEMENT.md` for checking latest:
+
+```bash
+# Check current RocketChat version
+helm search repo rocketchat/rocketchat --versions | head -5
+
+# Update in helm values files
+image:
+  tag: "7.11.0"  # Not 7.0.0!
+```
+
+**Test Phase D**:
+```bash
+cd AZURE/terraform
+
+# Deploy to production
+terraform plan -var-file=terraform.prod.tfvars -out=prod.tfplan
+terraform apply prod.tfplan
+
+# Verify
+kubectl get certificate -n rocketchat
+curl -I https://chat.yourdomain.com
+```
+
+**Validation Checklist**:
+- [ ] Domain resolves to App Gateway IP
+- [ ] SSL certificate issued by Let's Encrypt
+- [ ] HTTPS redirect working
+- [ ] RocketChat accessible at https://chat.yourdomain.com
+- [ ] 3 RocketChat replicas running
+- [ ] MongoDB HA operational
+- [ ] Monitoring alerts configured
+- [ ] Backup CronJob running
+- [ ] All pods healthy
+
+**Deliverable**: Production RocketChat with custom domain, SSL, alerts, and backups
+
+**Estimated Production Cost**: ~$1,160/month (5 x D4s_v3 nodes, App Gateway WAF, Premium storage)
+
+---
+
 ## 📋 Implementation Checklist
 
 ### Phase 0 (1 hour)
@@ -803,6 +1131,22 @@ terraform destroy -var-file=terraform.sandbox.tfvars
 - [ ] Test destroy/recreate with remote state
 - [ ] Remove old local state files
 
+### Phase D (6-8 hours) - Production with Domain & SSL
+- [ ] Register domain or prepare existing domain
+- [ ] Azure: Create dns.tf with DNS zone
+- [ ] Azure: Create ssl.tf with cert-manager
+- [ ] Azure: Create keyvault.tf for secrets
+- [ ] Azure: Create monitoring-alerts.tf
+- [ ] Azure: Create backup.tf for MongoDB backups
+- [ ] Create rocketchat-values-prod.yaml with SSL config
+- [ ] Update terraform.prod.tfvars with domain/email
+- [ ] Update RocketChat version to 7.11.0 (not 7.0.0!)
+- [ ] Deploy to production subscription
+- [ ] Verify SSL certificate issued
+- [ ] Test https://chat.yourdomain.com
+- [ ] Verify monitoring alerts
+- [ ] Test MongoDB backups
+
 ---
 
 ## 📊 Daily Workflow After Implementation
@@ -836,11 +1180,12 @@ terraform apply -var-file=terraform.sandbox.tfvars
 
 ## 🎯 Success Criteria
 
-✅ **Phase 0 Complete**: AWS + Azure deploy without errors
-✅ **Phase A Complete**: Deploy → Destroy → Deploy produces identical infrastructure
-✅ **Phase B Complete**: Can deploy to any environment with one command
-✅ **Phase C Complete**: Team members can destroy/deploy safely with remote state
-✅ **All Phases Complete**: True reusable template meeting all 4 requirements
+✅ **Phase 0 Complete**: AWS + Azure deploy without errors  
+✅ **Phase A Complete**: Deploy → Destroy → Deploy produces identical infrastructure  
+✅ **Phase B Complete**: Can deploy to any environment with one command  
+✅ **Phase C Complete**: Team members can destroy/deploy safely with remote state  
+✅ **Phase D Complete**: Production deployment with custom domain, SSL, alerts, and backups  
+✅ **All Phases Complete**: Production-ready template with full observability and automation
 
 ---
 
@@ -864,6 +1209,12 @@ terraform apply -var-file=terraform.sandbox.tfvars
 - Azure: versions.tf
 - Root: .gitignore
 
+### Phase D
+- Azure: dns.tf, ssl.tf, keyvault.tf, monitoring-alerts.tf, backup.tf (new)
+- Azure: terraform.prod.tfvars (update), variables.tf (add domain/email vars)
+- Azure: helm/rocketchat-values-prod.yaml (new)
+- DOCs: VERSION-MANAGEMENT.md (reference)
+
 ---
 
 ## 🚀 Ready to Start?
@@ -872,10 +1223,10 @@ terraform apply -var-file=terraform.sandbox.tfvars
 
 Then work through Phases A → B → C sequentially.
 
-**Estimated total time**: 2 weeks
+**Estimated total time**: 3 weeks (includes production deployment)
 
 ---
 
-**Master Plan Version**: 1.0
-**Last Updated**: October 23, 2025
-**Status**: Ready for Phase 0
+**Master Plan Version**: 2.0  
+**Last Updated**: October 24, 2025  
+**Status**: Phase B Complete | Phase C & D Ready

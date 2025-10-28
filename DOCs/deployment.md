@@ -83,40 +83,78 @@ terraform init
 
 ### 4. Review Configuration
 
-#### For AWS:
-```bash
-# Review variables
-cat terraform.tfvars
+#### Environment-Specific Configuration Files
 
-# Review planned changes
-terraform plan
+**NEW in Phase B**: Use environment-specific tfvars files for different environments:
+
+```bash
+# Available environment configurations:
+# - terraform.sandbox.tfvars  (minimal resources, cost-optimized)
+# - terraform.dev.tfvars      (moderate resources, development)
+# - terraform.prod.tfvars     (full resources, production-ready)
 ```
 
-#### For Azure (Sandbox Considerations):
+#### For AWS:
 ```bash
-# Review variables
-cat terraform.tfvars
+# Review variables for specific environment
+cat terraform.sandbox.tfvars   # or terraform.dev.tfvars, terraform.prod.tfvars
 
-# Check current AKS clusters (respect 3-cluster limit)
-az aks list --output table
+# Review planned changes for sandbox
+terraform plan -var-file=terraform.sandbox.tfvars -out=sandbox.tfplan
 
-# Verify node configuration (respect 3-node limit)
-grep "max_count" terraform.tfvars
+# For development
+terraform plan -var-file=terraform.dev.tfvars -out=dev.tfplan
 
-# Adjust if needed for sandbox limits
-sed -i 's/max_count = 4/max_count = 3/' terraform.tfvars
+# For production
+terraform plan -var-file=terraform.prod.tfvars -out=prod.tfplan
+```
 
-# Review planned changes
+#### For Azure:
+```bash
+# Review variables for specific environment
+cat terraform.sandbox.tfvars   # or terraform.dev.tfvars, terraform.prod.tfvars
+
+# For sandbox (respects 3-cluster, 3-node limits)
+terraform plan -var-file=terraform.sandbox.tfvars -out=sandbox.tfplan
+
+# For development (requires dedicated resource group)
+terraform plan -var-file=terraform.dev.tfvars -out=dev.tfplan
+
+# For production (full resources)
+terraform plan -var-file=terraform.prod.tfvars -out=prod.tfplan
+```
+
+#### Legacy Configuration (Not Recommended)
+```bash
+# Using default terraform.tfvars (kept for reference only)
 terraform plan
 ```
 
 ### 5. Deploy Infrastructure
+
+#### Using Environment-Specific Configuration (Recommended)
 ```bash
-# Apply changes (takes 15-20 minutes)
+# Apply saved plan file for sandbox
+terraform apply sandbox.tfplan
+
+# Or for development
+terraform apply dev.tfplan
+
+# Or for production
+terraform apply prod.tfplan
+
+# Deployment takes 15-20 minutes
+```
+
+#### Legacy Deployment (Not Recommended)
+```bash
+# Apply changes using default terraform.tfvars
 terraform apply
 
 # Type 'yes' when prompted
 ```
+
+**Note**: Using environment-specific tfvars ensures deterministic deployments with predictable resource naming based on the `deployment_id`.
 
 ### 6. Configure kubectl
 
